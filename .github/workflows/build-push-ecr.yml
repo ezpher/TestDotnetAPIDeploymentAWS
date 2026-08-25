@@ -57,7 +57,7 @@ jobs:
           IMAGE_TAG: ${{ steps.set-tag.outputs.image_tag }}
         run: |
           TUNNEL_HOST=$(echo $AWS_ENDPOINT_URL | sed -e 's|^[^/]*//||')
-          docker build -f src/MyBasicWebApiDemo/Dockerfile -t $TUNNEL_HOST/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $TUNNEL_HOST/$ECR_REPOSITORY:$IMAGE_TAG src/MyBasicWebApiDemo
 
       - name: Push Image to Emulator via Tunnel
         env:
