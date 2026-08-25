@@ -22,7 +22,7 @@ env:
   AWS_ACCESS_KEY_ID: test
   AWS_SECRET_ACCESS_KEY: test
   AWS_DEFAULT_REGION: us-east-1
-  AWS_ENDPOINT_URL: ${{ secrets.LOCAL_EMULATOR_URL }}
+  AWS_ENDPOINT_URL: ${{ vars.LOCAL_EMULATOR_URL }}
 
 jobs:
   build-and-push:
@@ -30,7 +30,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.set-tag.outputs.image_tag }}
-      image_uri: ${{ steps.build-image.outputs.image_uri }}
 
     steps:
       - name: Checkout Code
@@ -52,20 +51,17 @@ jobs:
           fi
 
           echo "image_tag=$TAG" >> $GITHUB_OUTPUT
-          
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and Push Docker Image
-        id: build-image
+      - name: Build Docker Image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.set-tag.outputs.image_tag }}
         run: |
-          FULL_IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          
-          docker build -t $FULL_IMAGE .
-          docker push $FULL_IMAGE
-          
-          echo "image_uri=$FULL_IMAGE" >> $GITHUB_OUTPUT
+          TUNNEL_HOST=$(echo $AWS_ENDPOINT_URL | sed -e 's|^[^/]*//||')
+          docker build -t $TUNNEL_HOST/$ECR_REPOSITORY:$IMAGE_TAG .
+
+      - name: Push Image to Emulator via Tunnel
+        env:
+          IMAGE_TAG: ${{ steps.set-tag.outputs.image_tag }}
+        run: |
+          TUNNEL_HOST=$(echo $AWS_ENDPOINT_URL | sed -e 's|^[^/]*//||')
+          docker push $TUNNEL_HOST/$ECR_REPOSITORY:$IMAGE_TAG
