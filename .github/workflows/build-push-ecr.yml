@@ -34,13 +34,18 @@ jobs:
       - name: Set Image Tag
         id: set-tag
         run: |
-          if [ -n "${{ github.event.inputs.custom_tag }}" ]; then
-            TAG="${{ github.event.inputs.custom_tag }}"
-          elif [ -n "${{ github.event.pull_request.head.sha }}" ]; then
-            TAG="${github.event.pull_request.head.sha:0:7}"
+          CUSTOM_TAG="${{ github.event.inputs.custom_tag }}"
+          PR_SHA="${{ github.event.pull_request.head.sha }}"
+          COMMIT_SHA="${{ github.sha }}"
+
+          if [ -n "$CUSTOM_TAG" ]; then
+            TAG="$CUSTOM_TAG"
+          elif [ -n "$PR_SHA" ]; then
+            TAG="${PR_SHA:0:7}"
           else
-            TAG="${github.sha:0:7}"
+            TAG="${COMMIT_SHA:0:7}"
           fi
+
           echo "image_tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Configure AWS Credentials
