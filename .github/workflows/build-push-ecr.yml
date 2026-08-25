@@ -14,10 +14,15 @@ on:
 
 permissions:
   contents: read
-
+  
+# Set mock credentials & emulator endpoint globally
 env:
-  AWS_REGION: us-east-1
   ECR_REPOSITORY: my-dotnet-api
+  AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_ENDPOINT_URL: ${{ secrets.LOCAL_EMULATOR_URL }}
 
 jobs:
   build-and-push:
@@ -47,14 +52,7 @@ jobs:
           fi
 
           echo "image_tag=$TAG" >> $GITHUB_OUTPUT
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
+          
       - name: Log in to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
