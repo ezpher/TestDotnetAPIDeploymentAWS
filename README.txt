@@ -30,3 +30,27 @@ git push -u origin my-feature-branch
 then go to the remote platform e.g. github, and click on compare and do a pull request, send the pull request for approval
 
 note: if you are the repo owner, you can't technically approve the pull request but you can check the option to bypass the rule, which will still count as a successful pull request
+
+
+PROVISIONING EMULATOR RESOURCES
+export AWS_ENDPOINT_URL="https://indiscretionary-subaerially-aleena.ngrok-free.dev"
+export AWS_ACCESS_KEY_ID="test"
+export AWS_SECRET_ACCESS_KEY="test"
+export AWS_DEFAULT_REGION="us-east-1"
+
+aws --endpoint-url=$AWS_ENDPOINT_URL ecr create-repository \
+  --repository-name my-dotnet-api
+
+aws --endpoint-url=$AWS_ENDPOINT_URL ecs create-cluster \
+  --cluster-name production-fargate-cluster
+  
+aws --endpoint-url=$AWS_ENDPOINT_URL ecs register-task-definition \
+  --cli-input-json file:///mnt/c/fargate-task-definition.json
+
+aws --endpoint-url=$AWS_ENDPOINT_URL ecs create-service \
+--cluster production-fargate-cluster \
+--service-name dotnet-api-fargate-service \
+--task-definition dotnet-api-fargate-task \
+--desired-count 1 \
+--launch-type FARGATE \
+--network-configuration "awsvpcConfiguration={subnets=[subnet-12345678],securityGroups=[sg-12345678],assignPublicIp=ENABLED}"
