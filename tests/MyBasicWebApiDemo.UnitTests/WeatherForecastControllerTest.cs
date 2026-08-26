@@ -18,7 +18,7 @@ public class WeatherForecastControllerTest
 
         // Assert
         var weatherForecast = Assert.IsAssignableFrom<IEnumerable<WeatherForecast>>(result);
-        Assert.Equal(5, weatherForecast.Count());
+        Assert.Equal(6, weatherForecast.Count());
     }
 
 }
