@@ -1,0 +1,68 @@
+name: "3. Deploy to Emulator ECS Fargate"
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image Tag to deploy'
+        required: true
+        default: 'latest'
+
+permissions:
+  contents: read
+
+env:
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_ENDPOINT_URL: ${{ vars.LOCAL_EMULATOR_URL }}
+  ECS_CLUSTER: production-fargate-cluster
+  ECS_SERVICE: dotnet-api-fargate-service
+  ECS_TASK_DEFINITION: .aws/fargate-task-definition.json
+
+jobs:
+  deploy:
+    name: Deploy to Local Emulator ECS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Determine Target Image Tag
+        id: get-tag
+        run: |
+          INPUT_TAG="${{ github.event.inputs.image_tag }}"
+          COMMIT_SHA="${{ github.sha }}"
+
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+          else
+            TAG="${COMMIT_SHA:0:7}"
+          fi
+
+          echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Render Task Definition for Local Emulator
+        run: |
+          TARGET_TAG="${{ steps.get-tag.outputs.image_tag }}"
+          
+          # Extract host domain from ngrok endpoint URL
+          TUNNEL_HOST=$(echo $AWS_ENDPOINT_URL | sed -e 's|^[^/]*//||')
+          FULL_IMAGE_URI="$TUNNEL_HOST/my-dotnet-api:$TARGET_TAG"
+          
+          # Replace placeholder with local emulator image path
+          jq --arg IMAGE "$FULL_IMAGE_URI" '.containerDefinitions[0].image = $IMAGE' \
+            .aws/fargate-task-definition.json > .aws/rendered-task-definition.json
+
+      - name: Register Task Definition on Emulator
+        run: |
+          aws --endpoint-url=$AWS_ENDPOINT_URL ecs register-task-definition \
+            --cli-input-json file://.aws/rendered-task-definition.json
+
+      - name: Update ECS Service on Emulator
+        run: |
+          aws --endpoint-url=$AWS_ENDPOINT_URL ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --force-new-deployment
