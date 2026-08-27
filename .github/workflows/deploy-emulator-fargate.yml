@@ -55,14 +55,18 @@ jobs:
           jq --arg IMAGE "$FULL_IMAGE_URI" '.containerDefinitions[0].image = $IMAGE' \
             .aws/fargate-task-definition.json > .aws/rendered-task-definition.json
 
-      - name: Register Task Definition on Emulator
+      - name: Register and Update Task Definition on Emulator
         run: |
-          aws --endpoint-url=$AWS_ENDPOINT_URL ecs register-task-definition \
-            --cli-input-json file://.aws/rendered-task-definition.json
-
-      - name: Update ECS Service on Emulator
-        run: |
+          # 1. Register new task definition and capture the output ARN
+          NEW_TASK_ARN=$(aws --endpoint-url=$AWS_ENDPOINT_URL ecs register-task-definition \
+            --cli-input-json file://.aws/rendered-task-definition.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          
+          echo "Registered Task Definition Revision: $NEW_TASK_ARN"
+  
+          # 2. Update service explicitly referencing the new revision
           aws --endpoint-url=$AWS_ENDPOINT_URL ecs update-service \
             --cluster $ECS_CLUSTER \
             --service $ECS_SERVICE \
+            --task-definition $NEW_TASK_ARN \
             --force-new-deployment
